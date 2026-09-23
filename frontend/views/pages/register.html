@@ -1,0 +1,66 @@
+<section class="auth-section">
+
+    <div class="container">
+        <div class="auth-card">
+            <div class="auth-content">
+                <h2 class="title">Crear cuenta </h2>
+                <p class="auth-desc">Registrate en <b>MAJOS CAKE MEDELLÍN</b> y disfruta de nuestros productos</p>
+                <form class="auth-form" autocomplete="off" id="form-register">
+                    <div class="input-group">
+                        <label for="full-name" class="input-label">Nombre completo</label>
+                        <input type="text" id="full-name" name="name" class="input-field" placeholder="Ej. María Pérez"
+                            aria-required="true">
+                    </div>
+                    <div class="input-group">
+                        <label for="phone" class="input-label">Número de celular</label>
+                        <input type="tel" id="phone" name="phone" class="input-field"
+                            placeholder="Ej. celular 3001234567 0 +14155552671" aria-required="true">
+                    </div>
+                    <div class="input-group">
+                        <label for="email" class="input-label">Correo electrónico</label>
+                        <input type="email" id="email" name="email" class="input-field"
+                            placeholder="tucorreo@ejemplo.com" aria-required="true">
+                    </div>
+                    <div class="input-group">
+                        <label for="password" class="input-label">Contrseña</label>
+                        <input type="password" id="password" name="password" class="input-field"
+                            placeholder="Crea tu contaseña" aria-required="true">
+                    </div>
+                    <div class="input-group">
+                        <label for="password-confirmation" class="input-label">Confirmar contraseña</label>
+                        <input type="password" id="password-confirmation" name="password-confirmation"
+                            class="input-field" placeholder="Confirma tu contraseña" aria-required="true">
+                    </div>
+                    <div class="show-password">
+                        <input type="checkbox" id="show-password">
+                        <label for="show-password">mostrar contraseña</label>
+                    </div>
+                    <button type="submit" class="auth-btn opacity-btn">Registrarse</button>
+                    <p class="auth-footnote">¿Ya tiene una cuenta? <a href="/login" class="auth-link"
+                            id="auth-link-register" data-link>Inicia sesión</a></p>
+                </form>
+
+                <div id="spinner" class="hidden-spinner">
+                    <div class="spinner">
+                        <div class="rect1"></div>
+                        <div class="rect2"></div>
+                        <div class="rect3"></div>
+                        <div class="rect4"></div>
+                        <div class="rect5"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="auth-side">
+                <div class="auth-logo">
+                    MAJOS CAKE MEDELLÍN
+                </div>
+                <div class="auth-side-content">
+                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face"
+                        alt="Imagen de formulario de registro" class="auth-img">
+                </div>
+            </div>
+        </div>
+    </div>
+
+</section>

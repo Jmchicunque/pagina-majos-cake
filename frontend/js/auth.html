@@ -1,0 +1,339 @@
+<script>
+
+    /* Login */
+    function initializeLogin() {
+
+        const userLogin = {
+            username: "",
+            password: ""
+        }
+
+        const $user = document.querySelector("#login-username");
+        const $passwordLogin = document.querySelector("#login-password");
+        const $showPasswordLogin = document.querySelector("#show-login-password");
+        const $formLogin = document.querySelector("#form-login");
+        const $loginBtn = document.querySelector("#form-login button[type='submit']");
+        const $spinnerLogin = document.querySelector("#spinner");
+        console.log($spinnerLogin)
+
+        if (!$formLogin) return;
+
+        $loginBtn.disabled = true;
+
+        $showPasswordLogin.addEventListener("change", () => {
+            if ($showPasswordLogin.checked) {
+                $passwordLogin.type = "text";
+            } else {
+                $passwordLogin.type = "password";
+            }
+        });
+
+        $user.addEventListener("input", validateLogin);
+        $passwordLogin.addEventListener("input", validateLogin);
+        $formLogin.addEventListener("submit", insertLogin);
+
+        function insertLogin (e) {
+            e.preventDefault();
+
+            $spinnerLogin.classList.remove("hidden-spinner");
+
+            google.script.run
+                .withSuccessHandler(confirmDataSubmissionLogin)
+                .withFailureHandler(handleRegistrationErrorLogin)
+                .loginUser(userLogin.username, userLogin.password);
+            
+        }
+        
+        function confirmDataSubmissionLogin (response) {
+            $spinnerLogin.classList.add("hidden-spinner");
+
+            if (!response.success) {
+                showNotification("Error", response.message);
+                return;
+            }
+
+            sessionStorage.setItem("authToken", response.token);
+            sessionStorage.setItem("authUser", JSON.stringify(response.user));
+
+            resetFormLogin();
+
+            setTimeout(() => {
+                router.navigateTo("/dashboard");
+            }, 1500);
+        }
+
+        function handleRegistrationErrorLogin (error) {
+            $spinnerLogin.classList.add("hidden-spinner");
+            showNotification("Error", "No se puedo iniciar sesión. intentalo de nuevo.");
+        }
+
+        function validateLogin (e) {
+            if (e.target.value.trim() === "") {
+                const labelLogin = e.target.parentElement.querySelector(".input-label");
+                showAlertLogin(`El campo ${labelLogin.textContent.toLowerCase()} es obligatorio`, e.target.parentElement);
+                userLogin[e.target.name] = "";
+                verifyLogin();
+                return;
+            }
+
+            if (e.target.id === "login-username") {
+                const isValidEmail = validateFieldLogin(e.target.value, /^[a-zA-Z0-9._-]+@[a-zA-Z0-9-]{2,}(\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,10}$/);
+                const isValidPhone = validateFieldLogin(e.target.value, /^\+?\d{10,15}$/);
+
+                if (!isValidEmail && !isValidPhone) {
+                    showAlertLogin(`Escribe un correo electrónico o número de celular válido`, e.target.parentElement);
+                    verifyLogin();
+                    return;
+                }
+            }
+
+            userLogin[e.target.name] = e.target.value.trim();
+
+            clearAlertLogin(e.target.parentElement);
+
+            verifyLogin();
+
+        }
+
+        function showAlertLogin (message, reference) {
+            clearAlertLogin(reference);
+
+            const $alertLogin = reference.querySelector(".auth-error");
+            if ($alertLogin) $alertLogin.remove();
+
+            const $error = document.createElement("p");
+            $error.textContent = message;
+            $error.classList.add("auth-error");
+            
+            reference.appendChild($error);
+
+        }
+
+        function clearAlertLogin (reference) {
+            const $alertLogin = reference.querySelector(".auth-error");
+            if ($alertLogin) $alertLogin.remove(); 
+        }
+
+        function validateFieldLogin (type, regex) {
+            return regex.test(type);
+        }
+
+        function verifyLogin () {
+            if (Object.values(userLogin).includes("")) {
+                $loginBtn.disabled = true;
+                $loginBtn.classList.add("opacity-btn");
+                return;
+            }
+            $loginBtn.disabled = false;
+            $loginBtn.classList.remove("opacity-btn");
+
+        }
+
+        function resetFormLogin () {
+            userLogin.username = "";
+            userLogin.password = "";
+
+            $formLogin.reset();
+
+            $passwordLogin.type = "password";
+            $showPasswordLogin.checked = false;
+            verifyLogin();
+        }
+
+    }
+
+
+    /* Registra usuario */
+    function initializeRegister () {
+
+        const user = {
+            name: "",
+            phone: "",
+            email: "",
+            password: ""
+        }
+
+        const $fullName = document.querySelector("#full-name");
+        const $phone = document.querySelector("#phone");
+        const $email = document.querySelector("#email");
+        const $password = document.querySelector("#password");
+        const $passwordConfirmation = document.querySelector("#password-confirmation");
+        
+        const $showPassword = document.querySelector("#show-password");
+
+        const $form = document.querySelector("#form-register");
+        const $register = document.querySelector("#form-register button[type='submit']");
+        const $spinner = document.querySelector("#spinner");
+
+        if (!$form) return;
+        
+        $register.disabled = true;
+
+        $showPassword.addEventListener("change", ()=> {
+            if ($showPassword.checked) {
+                $password.type = "text";
+                $passwordConfirmation.type = "text";
+            } else {
+                $password.type = "password";
+                $passwordConfirmation.type = "password";
+            }
+        });
+
+        $fullName.addEventListener("input", validate);
+        $phone.addEventListener("input", validate);
+        $email.addEventListener("input", validate);
+        $password.addEventListener("input", validate);
+        $passwordConfirmation.addEventListener("input", validate);
+
+        $form.addEventListener("submit", insertUser);
+
+        // Se envian los datos al google sheets
+        function insertUser(e) {
+            e.preventDefault();
+
+            $spinner.classList.remove("hidden-spinner");
+
+            google.script.run
+                .withSuccessHandler(confirmDataSubmission)
+                .withFailureHandler(handleRegistrationError)
+                .createUser(user);
+        }
+
+        function confirmDataSubmission (response) {
+            $spinner.classList.add("hidden-spinner");
+
+            if (!response.success) {
+                showNotification("Error", response.message);
+                return;
+            }
+
+            showNotification("Registro exitoso", response.message);
+            resetForm();
+
+            setTimeout(() => {
+                router.navigateTo("/login");
+            }, 1500);
+        }
+
+        function handleRegistrationError (error) {
+            $spinner.classList.add("hidden-spinner");
+            showNotification("Error", "No se creo el usuario");
+
+            console.error(error);
+        }
+
+        // validar los campos del formulario
+        function validate (e) {
+            if (e.target.value.trim() === "") {
+                const label = e.target.parentElement.querySelector(".input-label");
+                showAlert(`EL campo ${label.textContent.toLowerCase()} es obligatorio`, e.target.parentElement);
+                if (e.target.name !== "password-confirmation") user[e.target.name] = "";
+                verifyUser();
+                return;
+            }
+
+            if (e.target.id === "full-name" && !validateField(e.target.value, /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(?:[ '-][A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)+$/)) {
+                showAlert("Escribe tu nombre y apellido correctamente", e.target.parentElement);
+                user[e.target.name] = "";
+                verifyUser();
+                return;
+            }
+
+            if (e.target.id === "email" && !validateField(e.target.value, /^[a-zA-Z0-9._-]+@[a-zA-Z0-9-]{2,}(\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,10}$/)) {
+                showAlert("El correo no es válido", e.target.parentElement);
+                user[e.target.name] = "";
+                verifyUser();
+                return;
+            }
+
+            if (e.target.id === "phone" && !validateField(e.target.value, /^\+?\d{10,15}$/)) {
+                showAlert("El número de contacto no es válido", e.target.parentElement);
+                user[e.target.name] = "";
+                verifyUser();
+                return;
+            }
+
+            if (e.target.id === "password" && !validateField(e.target.value, /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d\w\W]{8,}$/)) {
+                showAlert("La contraseña debe tener mínimo 8 caracteres, una mayúscula, una minúscula y un número", e.target.parentElement);
+                user[e.target.name] = "";
+                verifyUser();
+                return;
+            }
+
+            if (e.target.id === "password-confirmation" && $password.value !== $passwordConfirmation.value) {
+                showAlert("Las contraseñas no coinciden", e.target.parentElement);
+                verifyUser();
+                return;
+            }
+
+            clearAlert(e.target.parentElement);
+
+            if ($password.value === $passwordConfirmation.value) clearAlert($passwordConfirmation.parentElement);
+
+            if (e.target.name !== "password-confirmation") {
+                if (e.target.name === "password") {
+                    user[e.target.name] = e.target.value.trim();
+                } else if (e.target.name === "name") {
+                    user[e.target.name] = e.target.value.trim();
+                } else {
+                    user[e.target.name] = e.target.value.trim().toLowerCase();
+                }
+            } 
+
+            verifyUser();
+        }
+
+        function showAlert (message, reference) {
+            clearAlert(reference);
+
+            //Comprueca si ya existe un alerta
+            const $alert = reference.querySelector(".auth-error");
+            if ($alert) $alert.remove();
+
+            const $error = document.createElement("p");
+            $error.textContent = message;
+            $error.classList.add("auth-error");
+            
+            //Se inyecta el error al formulario
+            reference.appendChild($error);
+        }
+
+        function clearAlert (reference) {
+            const $alert = reference.querySelector(".auth-error");
+            if ($alert) $alert.remove();
+        }
+
+        function validateField (type, regex) {
+            return regex.test(type);
+        }
+
+        function verifyUser () {
+            if (Object.values(user).includes("") || $passwordConfirmation.value === "" || $password.value !== $passwordConfirmation.value) {
+                $register.classList.add("opacity-btn");
+                $register.disabled = true;
+                return;
+            }
+            $register.classList.remove("opacity-btn");
+            $register.disabled = false;
+        }
+
+        function resetForm () {
+            // reiniciar el objeto y el campo de confirmar contraseña
+            user.name = "";
+            user.phone = "";
+            user.email = "";
+            user.password = "";
+            $passwordConfirmation.value = "";
+
+            $form.reset();
+
+            $password.type = "password";
+            $passwordConfirmation.type = "password";
+
+            $showPassword.checked = false;
+            verifyUser();
+        }
+
+    }
+
+</script>

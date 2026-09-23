@@ -1,0 +1,158 @@
+<script>
+    
+    window.Router = class Router {
+        constructor(routes) {
+            this.routes = routes;
+            this.init();
+        }
+
+        init () {
+            window.addEventListener("hashchange", () => {
+                this.handleRouter();
+            });
+
+            document.addEventListener("click", (e) => {
+                const link = e.target.closest("[data-link]");
+
+                if (!link) return;
+
+                e.preventDefault();
+
+                this.navigateTo(link.getAttribute("href"));
+
+            });
+
+            this.handleRouter();
+        }
+
+        navigateTo (url) {
+            window.location.hash = url;
+        }
+
+        pathToRegex (path) {
+            return new RegExp(
+                "^" + 
+                path
+                    .replace(/\//g, "\\/")
+                    .replace(/:\w+/g, "([^/]+)") +
+                    "$"
+            );
+        }
+
+        getParams (route, result) {
+            if (!result) return;
+
+            const values = result.slice(1);
+
+            const keys = [...route.path.matchAll(/:(\w+)/g)].map(match => match[1]);
+
+            return Object.fromEntries(
+                keys.map((key, index) => [
+                    key,
+                    values[index]
+                ])
+            );
+        }
+
+        async handleRouter () {
+            let pathname = window.location.hash.substring(1);
+
+            if (pathname === "") pathname = "/";
+
+            let match = null;
+
+            for (const route of this.routes) {
+                const result = pathname.match(this.pathToRegex(route.path));
+
+                if (result) {
+                    match = {
+                        route,
+                        result
+                    };
+                    break;
+                }
+            }
+
+            if (!match) {
+                match = {
+                    route: {
+                        path: "/404",
+                        page: "frontend/views/pages/404"
+                    },
+                    result: null
+                }
+            }
+
+            const params = this.getParams(
+                match.route,
+                match.result
+            );
+
+            const app = document.querySelector("#app");
+
+            if (!app) return;
+
+            app.innerHTML = `
+                <div class="page-loader">
+                    Cargando...
+                </div>
+            `;
+
+            google.script.run
+                .withSuccessHandler(html => {
+                    app.innerHTML = html;
+
+                    if (match.route.initialize) {
+                        match.route.initialize(params);
+                    } 
+                })
+                .withFailureHandler(error => {
+                    console.error(
+                        "Error al cargar la página:",
+                        error.message
+                    );
+
+                    app.innerHTML = `
+                        <h1>Error</h1>
+                        <p>No se pudo cargar la página.</p>
+                    `;
+                })
+                .getPage(match.route.page);
+        }
+
+    }
+
+    const routes = [
+        {
+            path: "/",
+            page: "frontend/views/pages/home"
+        },
+        {
+            path: "/productos",
+            page: "frontend/views/pages/products"
+        },
+        {
+            path: "/login",
+            page: "frontend/views/pages/login",
+            initialize: initializeLogin
+        },
+        {
+            path: "/registro",
+            page: "frontend/views/pages/register",
+            initialize: initializeRegister
+        },
+        {
+            path: "/dashboard",
+            page: "frontend/views/pages/dashboard",
+            initialize: initializeRegister
+        },
+        {
+            path: "/404",
+            page: "frontend/views/pages/404"
+        }
+    ];
+
+    const router = new Router(routes);
+
+
+</script>

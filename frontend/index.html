@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <?!= include("frontend/css/styles"); ?>
+</head>
+<body>
+    
+    <div class="overlay" data-overlay></div>
+
+    <!-- hearde -->
+    <?!= include("frontend/views/layout/header") ?>
+
+    <main id="app">
+        <?!= include("frontend/views/pages/home") ?>
+    </main>
+
+    <!-- notificación -->
+    <?!= include("frontend/views/components/notification-toast") ?>
+
+    <!-- footer -->
+    <?!= include("frontend/views/layout/footer") ?>
+
+    <!-- javascript -->
+    <?!= include("frontend/js/uiInteractions") ?>
+    <?!= include("frontend/js/notifications") ?>
+    <?!= include("frontend/js/auth") ?>
+    <?!= include("frontend/js/navigation") ?>
+
+</body>
+</html>

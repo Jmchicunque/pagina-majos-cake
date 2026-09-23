@@ -1,0 +1,26 @@
+<script>
+    function showNotification (title, message) {
+        const notification = document.querySelector(".notification-toast");
+        const toastCloseBtn = document.querySelector("[data-toast-close]");
+        const titleNotification  = document.querySelector("#title-notification");
+        const messageNotification  = document.querySelector("#message-notification");
+
+        titleNotification.textContent = title;
+        messageNotification.textContent = message;
+
+        notification.classList.remove("closed");
+
+        notification.addEventListener("animationend", () => {
+            notification.classList.add("closed");
+        }, {once: true});
+
+        if (toastCloseBtn) {
+            toastCloseBtn.addEventListener("click", () => {
+                notification.classList.add("closed");
+            });
+    
+        }
+    }
+
+
+</script>

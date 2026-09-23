@@ -1,0 +1,87 @@
+<script>
+    "use strict";
+
+    // modal variables
+   /*  const modal = document.querySelector("[data-modal]");
+    const modalCloseBtn = document.querySelector("[data-modal-close]");
+    const modalCloseOverlay = document.querySelector("[data-modal-overlay]");
+    
+    const modalClose = () => modal.classList.add("closed");
+    modalCloseBtn.addEventListener("click", modalClose);
+    modalCloseOverlay.addEventListener("click", modalClose); */
+
+    /* mobile menu */
+
+    const mobileMenuOpenBtn = document.querySelector("[data-mobile-menu-open-btn]");
+    const mobileMenu = document.querySelector("[data-mobile-menu]");
+    const mobileMenuCloseBtn = document.querySelector("[data-mobile-menu-close-btn]");
+
+    const overlay = document.querySelector(
+        "[data-overlay]"
+    );
+
+    // Abrir menú móvil
+    if (mobileMenuOpenBtn && mobileMenu && overlay) {
+
+        mobileMenuOpenBtn.addEventListener("click", function () {
+            mobileMenu.classList.add("active");
+            overlay.classList.add("active");
+        });
+
+    }
+
+    // Función para cerrar menú móvil
+    function closeMobileMenu() {
+
+        if (mobileMenu) {
+            mobileMenu.classList.remove("active");
+        }
+        if (overlay) {
+            overlay.classList.remove("active");
+        }
+
+    }
+
+    // Botón X para cerrar
+    if (mobileMenuCloseBtn) {
+        mobileMenuCloseBtn.addEventListener("click", closeMobileMenu);
+    }
+
+    // Cerrar al tocar el overlay
+    if (overlay) {
+        overlay.addEventListener("click", closeMobileMenu);
+    }
+
+    // ACORDEÓN DEL MENÚ
+    const accordionBtn = document.querySelectorAll("[data-accordion-btn]");
+
+    const accordion = document.querySelectorAll("[data-accordion]");
+
+    for (let i = 0; i < accordionBtn.length; i++) {
+        accordionBtn[i].addEventListener("click", function () {
+
+            const submenu = this.nextElementSibling;
+
+            if (!submenu) {
+                return;
+            }
+
+            const isOpen = submenu.classList.contains("active");
+            
+            for (let j = 0; j < accordion.length; j++) {
+
+                accordion[j].classList.remove("active");
+                accordionBtn[j].classList.remove("active");
+
+            }
+
+            if (!isOpen) {
+                submenu.classList.add("active");
+                this.classList.add("active");
+            }
+
+        });
+
+    }
+
+</script>
