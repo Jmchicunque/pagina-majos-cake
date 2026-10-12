@@ -49,17 +49,80 @@
 
             if (!response.success) {
                 showNotification("Error", response.message);
+                resetPasswordFieldLogin();
+                return;
+            }
+            
+            /* sessionStorage.setItem("authToken", response.token);
+            sessionStorage.setItem("authUser", JSON.stringify(response.user)); */
+
+            localStorage.setItem("authToken", response.token);
+            localStorage.setItem("authUser", JSON.stringify(response.user));
+            
+            resetFormLogin();
+            
+            const role = String(response.user.role).trim().toLowerCase();
+
+            if (role === "client") {
+                router.navigateTo("/dashboard");
                 return;
             }
 
-            sessionStorage.setItem("authToken", response.token);
-            sessionStorage.setItem("authUser", JSON.stringify(response.user));
+            google.script.run
+                .withSuccessHandler(function (panelResponse) {
 
-            resetFormLogin();
+                    console.log("RESPUESTA DE LA APLICACIÓN ADMIN: ", panelResponse);
 
-            setTimeout(() => {
-                router.navigateTo("/dashboard");
-            }, 1500);
+                    if (!panelResponse.success) {
+
+                        console.error("NO SE AUTORIZÓ EL PANEL: ", panelResponse.message);
+                        showNotification("Error", panelResponse.message);
+
+                        setTimeout(() => {
+                            router.navigateTo("/dashboard");
+                        }, 1500);
+
+                        return;
+                    }
+
+                    localStorage.setItem("applicationMode", "admin");
+
+                    const content = document.querySelector("#content");
+
+                    if (!content) {
+                        console.error("NO se encontró el contenedor #content");
+                        showNotification("Error", "No se pudo cargar la aplicación");
+                        return;
+                    }
+
+                    /* const mainContent = document.querySelector("#content");
+
+                    sessionStorage.setItem(
+                        "mainApplicationHTML",
+                        mainContent.outerHTML
+                    ); */
+
+                    window.mainApplication = content;
+
+                    document.body.innerHTML = panelResponse.html;
+
+                    console.log("JS ADMIN RECIBIDO:", panelResponse.js);
+
+                    const adminScript = document.createElement("script");
+                    adminScript.textContent = panelResponse.js;
+                    document.body.appendChild(adminScript);
+
+                    document.body.classList.remove("main-mode");
+                    document.body.classList.add("admin-mode");
+                    
+                    console.log("APLICACIÓN ADMINISTRATIVA CARGADA");
+                })
+                .withFailureHandler(function (error) {
+                    console.error("Error al obtener la aplicación administrativa: ", error);
+                    showNotification("Error", "No se pudo cargar el panel administrativo");
+                })
+                .getAdminApplication(response.token);
+
         }
 
         function handleRegistrationErrorLogin (error) {
@@ -132,7 +195,6 @@
         function resetFormLogin () {
             userLogin.username = "";
             userLogin.password = "";
-
             $formLogin.reset();
 
             $passwordLogin.type = "password";
@@ -140,9 +202,90 @@
             verifyLogin();
         }
 
+        function resetPasswordFieldLogin () {
+            userLogin.password = "";
+            $passwordLogin.value = "";
+
+            $passwordLogin.type = "password";
+            $showPasswordLogin.checked = false;
+            verifyLogin();
+        }        
+
     }
 
+    function initializeDashboard() {
 
+        const logoutButton = document.querySelector("#logout-button");
+
+        if (!logoutButton) {
+            console.error("No se encontró el botón de cerrar sesión.");
+            return;
+        }
+
+        logoutButton.addEventListener("click", logoutUserLogin);
+
+        const token = localStorage.getItem("authToken");
+
+        google.script.run
+            .withSuccessHandler(function (user) {
+
+                if (!user) {
+                    console.error("No se pudo obtener el usuario autenticado.");
+                    return;
+                }
+                console.log("USUARIO AUTENTICADO EN DASHBOARD:", user);
+
+            })
+            .withFailureHandler(function (error) {
+                console.error("Error al obtener el usuario autenticado:", error);
+            })
+            .getAuthenticatedUser(token);
+    }
+
+    /* Cerrar sesión */
+    function logoutUserLogin () {
+        const token = localStorage.getItem("authToken");
+
+        function finishLogout() {
+
+            /* sessionStorage.removeItem("authToken");
+            sessionStorage.removeItem("authUser"); */
+            localStorage.removeItem("authToken");
+            localStorage.removeItem("authUser");
+            localStorage.removeItem("currentRoute");
+
+            google.script.run
+                .withSuccessHandler(function (html) {
+                    document.body.innerHTML = html;
+                    window.location.hash = "/";
+                })
+                .withFailureHandler(function (error) {
+                    console.error("Error al restaurar la aplicación:", error);
+                })
+                .getMainApplication();
+        }
+
+        if (!token) {
+            finishLogout();
+            return;
+        }
+
+        google.script.run
+            .withSuccessHandler(response => {
+                if (!response.success) {
+                    console.log("No se puede cerrar sessión:", response.message);
+                }
+
+                finishLogout();
+            })
+            .withFailureHandler(error => {
+                console.log("Error al cerrar sessión:", error);
+
+                finishLogout(); 
+            })
+            .logoutUser(token);
+    }
+   
     /* Registra usuario */
     function initializeRegister () {
 
@@ -335,5 +478,86 @@
         }
 
     }
+
+    function checkSession() {
+
+        const token = localStorage.getItem("authToken");
+
+        if (!token) {
+            return;
+        }
+
+        google.script.run
+            .withSuccessHandler(function (user) {
+
+                if (!user) {
+
+                    console.log("LA SESIÓN HA EXPIRADO.");
+
+                    handleSessionExpired();
+
+                    return;
+                }
+
+                console.log("SESIÓN VÁLIDA:", user);
+
+            })
+            .withFailureHandler(function (error) {
+                console.error("ERROR AL COMPROBAR LA SESIÓN:", error);
+            })
+            .getAuthenticatedUser(token);
+    }
+
+    function handleSessionExpired() {
+
+        console.log("LA SESIÓN HA EXPIRADO. CERRANDO SESIÓN.");
+
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("authUser");
+        localStorage.removeItem("applicationMode");
+        localStorage.removeItem("currentRoute");
+
+        window.location.hash = "/";
+    }
+
+
+    //Pruebas
+    function testSessionExpiration() {
+
+        const token = localStorage.getItem("authToken");
+
+        if (!token) {
+            console.log("No existe authToken.");
+            return;
+        }
+
+        console.log("Invalidando sesión en el servidor...");
+
+        google.script.run
+            .withSuccessHandler(function (response) {
+
+                console.log("RESPUESTA:", response);
+
+                if (!response.success) {
+                    return;
+                }
+
+                console.log("Ejecutando checkSession()...");
+
+                checkSession();
+
+            })
+            .withFailureHandler(function (error) {
+
+                console.error("ERROR:", error);
+
+            })
+            .invalidateSessionForTest(token);
+    }
+
+    setInterval(() => {
+        checkSession();
+        console.log("Esta preguntado al servidor");
+    }, 5 * 60 * 1000);
 
 </script>

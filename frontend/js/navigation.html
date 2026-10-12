@@ -26,7 +26,13 @@
         }
 
         navigateTo (url) {
+            console.log("ROUTER NAVEGANDO A:", url);
+
+            localStorage.setItem("currentRoute", url);
+
             window.location.hash = url;
+
+            console.log("HASH DESPUÉS DE NAVEGAR:", window.location.hash);
         }
 
         pathToRegex (path) {
@@ -55,9 +61,70 @@
         }
 
         async handleRouter () {
+
+            console.log("HANDLE ROUTER EJECUTADO. HASH:", window.location.hash);
+
+               const applicationMode = localStorage.getItem("applicationMode");
+
+                if (applicationMode === "admin") {
+
+                    const token = localStorage.getItem("authToken");
+
+                    if (!token) {
+                        localStorage.removeItem("applicationMode");
+                        return;
+                    }
+
+                    google.script.run
+                        .withSuccessHandler(function (panelResponse) {
+
+                            if (!panelResponse.success) {
+
+                                localStorage.removeItem("applicationMode");
+                                localStorage.removeItem("authToken");
+                                localStorage.removeItem("authUser");
+
+                                window.location.hash = "/";
+
+                                return;
+                            }
+
+                            const content = document.querySelector("#content");
+
+                            if (!content) {
+                                console.error("NO se encontró el contenedor #content");
+                                return;
+                            }
+
+                            window.mainApplication = content;
+
+                            document.body.innerHTML = panelResponse.html;
+
+                            const adminScript = document.createElement("script");
+                            adminScript.textContent = panelResponse.js;
+                            document.body.appendChild(adminScript);
+
+                            document.body.classList.remove("main-mode");
+                            document.body.classList.add("admin-mode");
+                            document.body.classList.remove("application-loading");
+
+                            console.log("PANEL ADMINISTRATIVO RESTAURADO");
+
+                        })
+                        .withFailureHandler(function (error) {
+                            console.error("ERROR AL RESTAURAR EL PANEL ADMINISTRATIVO:",error);
+                            localStorage.removeItem("applicationMode");
+                        })
+                        .getAdminApplication(token);
+
+                    return;
+                }
+
             let pathname = window.location.hash.substring(1);
 
-            if (pathname === "") pathname = "/";
+            if (pathname === "") {
+                pathname = localStorage.getItem("currentRoute") || "/";
+            }
 
             let match = null;
 
@@ -104,7 +171,8 @@
 
                     if (match.route.initialize) {
                         match.route.initialize(params);
-                    } 
+                    }
+                    document.body.classList.remove("application-loading");
                 })
                 .withFailureHandler(error => {
                     console.error(
@@ -144,7 +212,7 @@
         {
             path: "/dashboard",
             page: "frontend/views/pages/dashboard",
-            initialize: initializeRegister
+            initialize: initializeDashboard
         },
         {
             path: "/404",
@@ -153,6 +221,10 @@
     ];
 
     const router = new Router(routes);
+
+    function restoreMainApplication() {
+        window.location.reload();
+    }
 
 
 </script>

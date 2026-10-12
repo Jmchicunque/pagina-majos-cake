@@ -1,31 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
+    <base target="_top">
     <?!= include("frontend/css/styles"); ?>
 </head>
-<body>
+<body class="main-mode application-loading">
+
+    <div id="content">
+        <div class="overlay" data-overlay></div>
+
+        <!-- hearde -->
+        <?!= include("frontend/views/layout/header") ?>
+
+        <main id="app">
+            <?!= include("frontend/views/pages/home") ?>
+        </main>
+
+        <!-- notificación -->
+        <?!= include("frontend/views/components/notification-toast") ?>
+
+        <!-- footer -->
+        <?!= include("frontend/views/layout/footer") ?>
+
+        <!-- javascript -->
+        <?!= include("frontend/js/uiInteractions") ?>
+        <?!= include("frontend/js/notifications") ?>
+        <?!= include("frontend/js/auth") ?>
+        <?!= include("frontend/js/navigation") ?>
+
+    </div>
     
-    <div class="overlay" data-overlay></div>
-
-    <!-- hearde -->
-    <?!= include("frontend/views/layout/header") ?>
-
-    <main id="app">
-        <?!= include("frontend/views/pages/home") ?>
-    </main>
-
-    <!-- notificación -->
-    <?!= include("frontend/views/components/notification-toast") ?>
-
-    <!-- footer -->
-    <?!= include("frontend/views/layout/footer") ?>
-
-    <!-- javascript -->
-    <?!= include("frontend/js/uiInteractions") ?>
-    <?!= include("frontend/js/notifications") ?>
-    <?!= include("frontend/js/auth") ?>
-    <?!= include("frontend/js/navigation") ?>
-
 </body>
 </html>

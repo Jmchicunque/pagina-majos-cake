@@ -37,7 +37,6 @@ function hexToBytes(hex) {
 
 /* XOR DE ARRAYS DE BYTES */
 function xorBytes(a, b) {
-
   if (a.length !== b.length) {
     throw new Error("Los arrays deben tener la misma longitud.");
   }
@@ -45,7 +44,6 @@ function xorBytes(a, b) {
   const result = [];
 
   for (let i = 0; i < a.length; i++) {
-
     const byteA = a[i] & 0xff;
     const byteB = b[i] & 0xff;
 
@@ -154,7 +152,6 @@ function verifyPassword(password, storedHash, storedSalt) {
 }
 
 function constantTimeCompare(a, b) {
-
   if (!Array.isArray(a) || !Array.isArray(b)) {
     return false;
   }
@@ -185,10 +182,6 @@ const LOGIN_CONFIG = {
 /* LOGIN */
 
 function loginUser(username, password) {
-  const sheetUsers = obtainSheet(config_().SH_USER_REGISTRATION);
-
-  const lock = LockService.getScriptLock();
-
   /* Validaciones básicas */
 
   if (typeof username !== "string" || !username.trim()) {
@@ -207,14 +200,18 @@ function loginUser(username, password) {
 
   username = username.trim().toLowerCase();
 
+  const sheetUsers = obtainSheet(config_().SH_USER_REGISTRATION);
+  const lock = LockService.getScriptLock();
+
+  let userRow = -1;
+  let user = null;
+
   lock.waitLock(10000);
 
   try {
-    /* Obtener usuarios */
+    const lastRow = sheetUsers.getLastRow();
 
-    const values = sheetUsers.getDataRange().getValues();
-
-    if (values.length <= 1) {
+    if (lastRow <= 1) {
       return {
         success: false,
         message: "Correo o celular incorrectos.",
@@ -223,16 +220,17 @@ function loginUser(username, password) {
 
     /* Buscar usuario */
 
-    let userRow = -1;
-    let user = null;
+    const values = sheetUsers.getRange(2, 3, lastRow - 1, 2).getValues();
 
-    for (let i = 1; i < values.length; i++) {
-      const row = values[i];
-      const rowPhone = String(row[2]).trim();
-      const rowEmail = String(row[3]).trim().toLowerCase();
+    for (let i = 0; i < values.length; i++) {
+
+      const rowPhone = String(values[i][0]).trim();
+      const rowEmail = String(values[i][1]).trim().toLowerCase();
 
       if (rowEmail === username || rowPhone === username) {
-        userRow = i + 1;
+        userRow = i + 2;
+
+        const row = sheetUsers.getRange(userRow, 1, 1, 15).getValues()[0];
 
         user = {
           id: row[0],
@@ -251,6 +249,7 @@ function loginUser(username, password) {
           passwordChangedAt: row[13],
           emailVerified: row[14],
         };
+
         break;
       }
     }
@@ -282,39 +281,54 @@ function loginUser(username, password) {
       if (blockedUntil.getTime() > now.getTime()) {
         return {
           success: false,
-          message:
-            "La cuenta está temporalmente bloqueada. Intenta nuevamente más tarde.",
+          message:"La cuenta está temporalmente bloqueada. Intenta nuevamente más tarde.",
         };
       }
 
       user.failedAttempts = 0;
 
-      sheetUsers.getRange(userRow, 7).setValue(0);
-      sheetUsers.getRange(userRow, 8).clearContent();
     }
+  } finally {
+    lock.releaseLock();
+  }
 
-    /* Verificar contraseña */
+  const passwordCorrect = verifyPassword(password, user.password, user.salt);
 
-    const passwordCorrect = verifyPassword(password, user.password, user.salt);
+  lock.waitLock(10000);
+
+  try {
+
+    const [failedAttemptsValue, currentBlockedUntil] = sheetUsers.getRange(userRow, 7, 1, 2).getValues()[0];
+    let currentFailedAttempts = Number(failedAttemptsValue) || 0;
+
+    const now = new Date();
+
+    if (currentBlockedUntil) {
+      const blockedUntil = new Date(currentBlockedUntil);
+
+      if (blockedUntil.getTime() > now.getTime()) {
+        return {
+          success: false,
+          message: "La cuenta está temporalmente bloqueada. Intenta nuevamente más tarde.",
+        };
+      }
+
+      currentFailedAttempts = 0;
+    }
 
     /* CONTRASEÑA INCORRECTA */
 
     if (!passwordCorrect) {
-      const failedAttempts = user.failedAttempts + 1;
+      const failedAttempts = currentFailedAttempts + 1;
 
       if (failedAttempts >= LOGIN_CONFIG.maxFailedAttempts) {
-        const blockedUntil = new Date(
-          Date.now() + LOGIN_CONFIG.blockMinutes * 60 * 1000,
-        );
+        const blockedUntil = new Date(Date.now() + LOGIN_CONFIG.blockMinutes * 60 * 1000);
 
-        sheetUsers.getRange(userRow, 7).setValue(failedAttempts);
-        sheetUsers.getRange(userRow, 8).setValue(blockedUntil);
-        sheetUsers.getRange(userRow, 12).setValue(new Date());
+        sheetUsers.getRange(userRow, 7, 1, 2).setValues([[failedAttempts, blockedUntil]]);
 
         return {
           success: false,
-          message:
-            "Demasiados intentos fallidos. La cuenta ha sido bloqueada temporalmente.",
+          message: "Demasiados intentos fallidos. La cuenta ha sido bloqueada temporalmente.",
         };
       }
 
@@ -328,14 +342,11 @@ function loginUser(username, password) {
 
     /* LOGIN CORRECTO */
 
-    const now = new Date();
+    sheetUsers.getRange(userRow, 7, 1, 2).setValues([[ 0, "" ]]); 
+    sheetUsers.getRange(userRow, 12, 1, 2).setValues([[ now, now ]]);
 
-    sheetUsers.getRange(userRow, 7).setValue(0);
-    sheetUsers.getRange(userRow, 8).clearContent();
-    sheetUsers.getRange(userRow, 13).setValue(now);
-    sheetUsers.getRange(userRow, 12).setValue(now);
+    /* CREAR SESIÓN */
 
-    /* Se genera el token de sesión */
     const token = createSession(user.id);
 
     /* RESPUESTA */
@@ -357,19 +368,61 @@ function loginUser(username, password) {
   }
 }
 
-/* Sessiones */
+/* crear sesión */
 
-function createSession (userId) {
+function createSession(userId) {
   const token = Utilities.getUuid() + Utilities.getUuid();
   const cache = CacheService.getScriptCache();
   cache.put(token, String(userId), 21600);
   return token;
 }
 
-function getRequesterFromToken (token) {
-  if(!token) return null;
+function getRequesterFromToken(token) {
+  if (!token) return null;
+
   const cache = CacheService.getScriptCache();
   const userId = cache.get(token);
-  if(!userId) return null;
+  
+  if (!userId) return null;
+  
   return userId;
+}
+
+/* cerrar sesión */
+
+function logoutUser (token) {
+  if (!token) {
+    return {
+      success: false,
+      message: "Sesión no válida"
+    };
+  }
+
+  const cache = CacheService.getScriptCache();
+  cache.remove(token);
+
+  return {
+    success: true,
+    message: "Sesión cerrada correctamente"
+  }
+}
+
+// Pruebas
+function invalidateSessionForTest(token) {
+
+    if (!token) {
+        return {
+            success: false,
+            message: "Token no proporcionado."
+        };
+    }
+
+    const cache = CacheService.getScriptCache();
+
+    cache.remove(token);
+
+    return {
+        success: true,
+        message: "Sesión invalidada para pruebas."
+    };
 }

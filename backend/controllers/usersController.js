@@ -1,3 +1,11 @@
+function getPublicRegistrationRole() {
+
+    if (hasPrimaryAdministrator()) {
+        return "client";
+    }
+
+    return "admin";
+}
 
 function createUser (userData) {
 
@@ -48,7 +56,7 @@ function createUser (userData) {
             0,
             "",
             "active",
-            lastRow <= 1 ? "Admin" : "cliente",
+            getPublicRegistrationRole(),
             now,
             now,
             "",

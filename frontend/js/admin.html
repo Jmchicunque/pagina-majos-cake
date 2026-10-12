@@ -1,0 +1,382 @@
+<script>
+
+    (() => {
+
+        function logoutAdmin() {
+
+            const token = localStorage.getItem("authToken");
+
+            if (!token) {
+                console.log("No existe una sesión administrativa.");
+                return;
+            }
+
+            google.script.run
+                .withSuccessHandler(function (response) {
+
+                    if (!response.success) {
+                        console.error(
+                            "ERROR AL CERRAR SESIÓN:",
+                            response.message
+                        );
+                        return;
+                    }
+
+                    console.log("SESIÓN ADMINISTRATIVA CERRADA");
+
+                    const mainApplication = window.mainApplication;
+
+                    if (!mainApplication) {
+                        console.error("NO SE ENCONTRÓ LA APLICACIÓN PRINCIPAL PARA RESTAURAR");
+                        return;
+                    }
+
+                    document.body.innerHTML = "";
+
+                    document.body.appendChild(mainApplication);
+
+                    document.body.classList.remove("admin-mode");
+                    document.body.classList.add("main-mode");
+
+                    localStorage.removeItem("authToken");
+                    localStorage.removeItem("authUser");
+                    localStorage.removeItem("applicationMode");
+                    localStorage.removeItem("currentRoute");
+
+                    delete window.mainApplication;
+
+                    window.location.hash = "/";
+
+                    console.log("APLICACIÓN PRINCIPAL RESTAURADA");
+
+                })
+                .withFailureHandler(function (error) {
+                    console.error("ERROR AL RESTAURAR LA APLICACIÓN PRINCIPAL:", error);
+                })
+                .logoutUser(token);
+        }
+
+        const logoutButton = document.querySelector("#admin-logout-button");
+
+        if (logoutButton) {
+            logoutButton.addEventListener("click", logoutAdmin);
+        }
+
+        const sidebar = document.querySelector("#sidebar");
+        const toggleBtn = document.querySelector("#toggle-btn");
+
+        function resizeAdminCharts() {
+            const small = window.innerWidth <= 768;
+            const heights = {
+                lineChart: small ? 230 : 280,
+                barChart: small ? 280 : 340
+            };
+
+            ["lineChart", "barChart"].forEach(function (id) {
+                const chart = window.Chart && Chart.getChart(id);
+                if (!chart) return;
+
+                const card = chart.canvas.parentElement;
+                const cardStyle = getComputedStyle(card);
+                const paddingY = parseFloat(cardStyle.paddingTop) + parseFloat(cardStyle.paddingBottom);
+
+                const nextHeight = heights[id] + paddingY;
+
+                if (Math.abs(card.getBoundingClientRect().height - nextHeight) > 1) {
+                    card.style.height = nextHeight + "px";
+                    chart.resize();
+                }
+            });
+        }
+
+        let resizeFrame = null;
+
+        function scheduleChartResize() {
+            if (resizeFrame) cancelAnimationFrame(resizeFrame);
+            resizeFrame = requestAnimationFrame(resizeAdminCharts);
+        }
+
+        if (sidebar && toggleBtn) {
+            toggleBtn.addEventListener("click", function () {
+                sidebar.classList.toggle("collapsed");
+            });
+
+            sidebar.addEventListener("transitionend", function (e) {
+                if (e.target === sidebar && e.propertyName === "width") {
+                    scheduleChartResize();
+                }
+            });
+        }
+
+        const leftOuter = document.querySelector(".left-outer");
+
+        if (leftOuter && window.ResizeObserver) {
+            let lastWidth = 0;
+
+            new ResizeObserver(function (entries) {
+                const currentWidth = Math.round(entries[0].contentRect.width);
+                if (currentWidth === lastWidth) return;
+                lastWidth = currentWidth;
+                scheduleChartResize();
+            }).observe(leftOuter);
+        }
+
+        const adminApp = document.querySelector("#admin-app");
+        if (adminApp) {
+            adminApp.addEventListener("click", function (e) {
+                const link = e.target.closest('a[href="#"]');
+                if (link) e.preventDefault();
+            });
+        }
+
+        const navItems = document.querySelectorAll(".icons .nav-item");
+
+        function closeNavItems() {
+            navItems.forEach(function (item) {
+                item.classList.remove("active");
+            });
+        }
+
+        navItems.forEach(function (item) {
+            item.addEventListener("click", function (e) {
+                if (e.target.closest(".dropdown")) {
+                    closeNavItems();
+                    return;
+                }
+
+                const wasOpen = item.classList.contains("active");
+                closeNavItems();
+                if (!wasOpen) item.classList.add("active");
+            });
+        });
+
+        if (adminApp) {
+            adminApp.addEventListener("click", function (e) {
+                if (!e.target.closest(".nav-item")) closeNavItems();
+            });
+        }
+
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Escape") closeNavItems();
+        });
+
+        const nombresMeses = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+        const nombresDias = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+
+        const calendarEl = document.querySelector("#calendar");
+        const monthYearEl = document.querySelector("#month-year");
+        const prevBtn = document.querySelector("#prev");
+        const nextBtn = document.querySelector("#next");
+
+        let visibleDate = new Date();
+        let selectedDate = new Date();
+
+        function renderCalendar() {
+            if (!calendarEl || !monthYearEl) return;
+
+            const year = visibleDate.getFullYear();
+            const month = visibleDate.getMonth();
+            const today = new Date();
+
+            monthYearEl.textContent = nombresMeses[month] + " " + year;
+            calendarEl.innerHTML = "";
+
+            nombresDias.forEach(function (nombre) {
+                const el = document.createElement("div");
+                el.classList.add("day-name");
+                el.textContent = nombre;
+                calendarEl.appendChild(el);
+            });
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            for (let i = 0; i < firstDay; i++) {
+                calendarEl.appendChild(document.createElement("div"));
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const el = document.createElement("div");
+                el.textContent = day;
+                el.dataset.day = day;
+                el.style.cursor = "pointer";
+
+                const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+                const isSelected = day === selectedDate.getDate() && month === selectedDate.getMonth() && year === selectedDate.getFullYear();
+
+                if (isToday) el.classList.add("today");
+                if (isSelected) el.classList.add("active");
+
+                calendarEl.appendChild(el);
+            }
+        }
+
+        if (calendarEl) {
+            calendarEl.addEventListener("click", function (e) {
+                const dayEl = e.target.closest("[data-day]");
+                if (!dayEl) return;
+
+                selectedDate = new Date(
+                    visibleDate.getFullYear(),
+                    visibleDate.getMonth(),
+                    Number(dayEl.dataset.day)
+                );
+
+                renderCalendar();
+            });
+        }
+
+        if (prevBtn) prevBtn.addEventListener("click", function () {
+            visibleDate.setDate(1);
+            visibleDate.setMonth(visibleDate.getMonth() - 1);
+            renderCalendar();
+        });
+
+        if (nextBtn) nextBtn.addEventListener("click", function () {
+            visibleDate.setDate(1);
+            visibleDate.setMonth(visibleDate.getMonth() + 1);
+            renderCalendar();
+        });
+
+        renderCalendar();
+
+        function applyChartTheme() {
+            if (!window.Chart) return;
+
+            const styles = getComputedStyle(document.body);
+            const colorMuted = styles.getPropertyValue("--admin-muted").trim();
+            const colorText = styles.getPropertyValue("--admin-white").trim();
+            const gridColor = document.body.classList.contains("light-theme")
+                ? "rgba(100, 116, 139, 0.18)"
+                : "rgba(148, 163, 184, 0.12)";
+
+            Chart.defaults.color = colorMuted;
+
+            ["lineChart", "barChart"].forEach(function (id) {
+                const chart = Chart.getChart(id);
+                if (!chart) return;
+
+                chart.options.plugins.legend.labels.color = colorText;
+                chart.options.scales.x.ticks.color = colorMuted;
+                chart.options.scales.y.ticks.color = colorMuted;
+                chart.options.scales.x.grid.color = gridColor;
+                chart.options.scales.y.grid.color = gridColor;
+                chart.update();
+            });
+        }
+
+        const themeBtn = document.querySelector("#theme-btn");
+        if (themeBtn) {
+            themeBtn.addEventListener("click", function () {
+                document.body.classList.toggle("light-theme");
+                applyChartTheme();
+            });
+        }
+
+        function loadChartJs() {
+            return new Promise(function (resolve, reject) {
+                if (window.Chart) {
+                    resolve();
+                    return;
+                }
+                const script = document.createElement("script");
+                script.src = "https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js";
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        function initAdminCharts() {
+            const lineChart = document.getElementById("lineChart");
+            const barChart = document.getElementById("barChart");
+
+            if (!lineChart || !barChart) return;
+
+            const styles = getComputedStyle(document.body);
+            const cssVar = (name) => styles.getPropertyValue(name).trim();
+            const colorMuted = cssVar("--admin-muted");
+            const colorText = cssVar("--admin-white");
+            const colorPrimary = "#1976d2";
+            const colorSecondary = "#7ec8ff";
+
+            Chart.defaults.font.family = '"Montserrat", sans-serif';
+            Chart.defaults.color = colorMuted;
+
+            const gridColor = "rgba(148, 163, 184, 0.12)";
+
+            const scales = {
+                x: { grid: { color: gridColor }, ticks: { color: colorMuted } },
+                y: { grid: { color: gridColor }, ticks: { color: colorMuted }, beginAtZero: true }
+            };
+
+            const plugins = {
+                legend: {
+                    position: "top",
+                    labels: { color: colorText }
+                }
+            };
+
+            new Chart(lineChart, {
+                type: "line",
+                data: {
+                    labels: ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"],
+                    datasets: [
+                        {
+                            label: "Pedidos",
+                            data: [3, 5, 2, 8, 6, 9, 4],
+                            borderColor: colorPrimary,
+                            backgroundColor: colorPrimary,
+                            borderWidth: 3,
+                            tension: 0.4,
+                            pointRadius: 3
+                        },
+                        {
+                            label: "Entregas",
+                            data: [2, 4, 6, 3, 7, 5, 8],
+                            borderColor: colorSecondary,
+                            backgroundColor: colorSecondary,
+                            borderWidth: 3,
+                            tension: 0.4,
+                            pointRadius: 3
+                        }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: plugins, scales: scales }
+            });
+
+            new Chart(barChart, {
+                type: "bar",
+                data: {
+                    labels: ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"],
+                    datasets: [
+                        {
+                            label: "Pedidos",
+                            data: [12, 19, 11, 15, 8, 14, 10],
+                            backgroundColor: colorPrimary,
+                            borderRadius: 6
+                        },
+                        {
+                            label: "Entregas",
+                            data: [9, 11, 6, 12, 7, 10, 8],
+                            backgroundColor: colorSecondary,
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: plugins, scales: scales }
+            });
+        }
+
+        loadChartJs()
+            .then(function () {
+                initAdminCharts();
+                scheduleChartResize();
+            })
+            .catch(function (error) {
+                console.error("No se pudo cargar Chart.js:", error);
+            });
+
+    })();
+
+</script>
