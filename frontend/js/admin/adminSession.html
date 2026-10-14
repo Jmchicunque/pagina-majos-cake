@@ -1,0 +1,59 @@
+<script>
+
+    function logoutAdmin() {
+
+        const token = localStorage.getItem("authToken");
+
+        if (!token) {
+            console.log("No existe una sesión administrativa.");
+            return;
+        }
+
+        google.script.run
+            .withSuccessHandler(function (response) {
+
+                if (!response.success) {
+                    console.error(
+                        "ERROR AL CERRAR SESIÓN:",
+                        response.message
+                    );
+                    return;
+                }
+
+                const mainApplication = window.mainApplication;
+
+                if (!mainApplication) {
+                    console.error("NO SE ENCONTRÓ LA APLICACIÓN PRINCIPAL PARA RESTAURAR");
+                    return;
+                }
+
+                document.body.innerHTML = "";
+
+                document.body.appendChild(mainApplication);
+
+                document.body.classList.remove("admin-mode");
+                document.body.classList.add("main-mode");
+
+                localStorage.removeItem("authToken");
+                localStorage.removeItem("authUser");
+                localStorage.removeItem("applicationMode");
+                localStorage.removeItem("currentRoute");
+
+                delete window.mainApplication;
+
+                window.location.hash = "/";
+
+            })
+            .withFailureHandler(function (error) {
+                console.error("ERROR AL RESTAURAR LA APLICACIÓN PRINCIPAL:", error);
+            })
+            .logoutUser(token);
+    }
+
+    const logoutButton = document.querySelector("#admin-logout-button");
+
+    if (logoutButton) {
+        logoutButton.addEventListener("click", logoutAdmin);
+    }
+
+</script>

@@ -1,0 +1,81 @@
+<script>
+    const nombresMeses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const nombresDias = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+    const calendarEl = document.querySelector("#calendar");
+    const monthYearEl = document.querySelector("#month-year");
+    const prevBtn = document.querySelector("#prev");
+    const nextBtn = document.querySelector("#next");
+
+    let visibleDate = new Date();
+    let selectedDate = new Date();
+
+    function renderCalendar() {
+        if (!calendarEl || !monthYearEl) return;
+
+        const year = visibleDate.getFullYear();
+        const month = visibleDate.getMonth();
+        const today = new Date();
+
+        monthYearEl.textContent = nombresMeses[month] + " " + year;
+        calendarEl.innerHTML = "";
+
+        nombresDias.forEach(function (nombre) {
+            const el = document.createElement("div");
+            el.classList.add("day-name");
+            el.textContent = nombre;
+            calendarEl.appendChild(el);
+        });
+
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        for (let i = 0; i < firstDay; i++) {
+            calendarEl.appendChild(document.createElement("div"));
+        }
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const el = document.createElement("div");
+            el.textContent = day;
+            el.dataset.day = day;
+            el.style.cursor = "pointer";
+
+            const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+            const isSelected = day === selectedDate.getDate() && month === selectedDate.getMonth() && year === selectedDate.getFullYear();
+
+            if (isToday) el.classList.add("today");
+            if (isSelected) el.classList.add("active");
+
+            calendarEl.appendChild(el);
+        }
+    }
+
+    if (calendarEl) {
+        calendarEl.addEventListener("click", function (e) {
+            const dayEl = e.target.closest("[data-day]");
+            if (!dayEl) return;
+
+            selectedDate = new Date(
+                visibleDate.getFullYear(),
+                visibleDate.getMonth(),
+                Number(dayEl.dataset.day)
+            );
+
+            renderCalendar();
+        });
+    }
+
+    if (prevBtn) prevBtn.addEventListener("click", function () {
+        visibleDate.setDate(1);
+        visibleDate.setMonth(visibleDate.getMonth() - 1);
+        renderCalendar();
+    });
+
+    if (nextBtn) nextBtn.addEventListener("click", function () {
+        visibleDate.setDate(1);
+        visibleDate.setMonth(visibleDate.getMonth() + 1);
+        renderCalendar();
+    });
+
+    renderCalendar();
+</script>

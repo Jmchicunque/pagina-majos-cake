@@ -234,6 +234,23 @@ function getFileContent(path) {
         .getContent();
 }
 
+const ADMIN_JS_MODULES = [
+    "frontend/js/admin/adminSession",
+    "frontend/js/admin/adminCharts",
+    "frontend/js/admin/adminLayout",
+    "frontend/js/admin/adminCalendar"
+];
+
+function buildAdminJavaScript() {
+    const code = ADMIN_JS_MODULES
+        .map(function (path) {
+            return removeScriptTags(getFileContent(path));
+        })
+        .join("\n\n");
+
+    return "(() => {\n" + code + "\n})();";
+}
+
 function getAdminFiles() {
 
     const files = {
@@ -242,7 +259,7 @@ function getAdminFiles() {
         navigation: "frontend/views/admin/components/adminNavigation",
         content: "frontend/views/admin/components/adminContent",
         app: "frontend/views/admin/adminApp",
-        js: "frontend/js/admin"
+        /* js: "frontend/js/admin" */
     };
 
     return {
@@ -250,7 +267,8 @@ function getAdminFiles() {
         navigation: getFileContent(files.navigation),
         content: getFileContent(files.content),
         app: getFileContent(files.app),
-        js: getFileContent(files.js)
+        /* js: getFileContent(files.js) */
+        js: buildAdminJavaScript()
     };
 
 }
@@ -269,7 +287,8 @@ function getAdminApplication(token) {
     html = html.replace("{{ADMIN_NAVIGATION}}", files.navigation);
     html = html.replace("{{ADMIN_CONTENT}}", files.content);
 
-    const adminJavaScript = removeScriptTags(files.js);
+    /* const adminJavaScript = removeScriptTags(files.js); */
+    const adminJavaScript = files.js;
 
     return {
         success: true,

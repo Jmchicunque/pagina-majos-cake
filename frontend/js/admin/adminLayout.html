@@ -1,0 +1,68 @@
+<script>
+    const sidebar = document.querySelector("#sidebar");
+    const toggleBtn = document.querySelector("#toggle-btn");
+
+    if (sidebar && toggleBtn) {
+        toggleBtn.addEventListener("click", function () {
+            sidebar.classList.toggle("collapsed");
+        });
+
+        sidebar.addEventListener("transitionend", function (e) {
+            if (e.target === sidebar && e.propertyName === "width") {
+                scheduleChartResize();
+            }
+        });
+    }
+
+    const leftOuter = document.querySelector(".left-outer");
+
+    if (leftOuter && window.ResizeObserver) {
+        let lastWidth = 0;
+
+        new ResizeObserver(function (entries) {
+            const currentWidth = Math.round(entries[0].contentRect.width);
+            if (currentWidth === lastWidth) return;
+            lastWidth = currentWidth;
+            scheduleChartResize();
+        }).observe(leftOuter);
+    }
+
+    const adminApp = document.querySelector("#admin-app");
+    if (adminApp) {
+        adminApp.addEventListener("click", function (e) {
+            const link = e.target.closest('a[href="#"]');
+            if (link) e.preventDefault();
+        });
+    }
+
+    const navItems = document.querySelectorAll(".icons .nav-item");
+
+    function closeNavItems() {
+        navItems.forEach(function (item) {
+            item.classList.remove("active");
+        });
+    }
+
+    navItems.forEach(function (item) {
+        item.addEventListener("click", function (e) {
+            if (e.target.closest(".dropdown")) {
+                closeNavItems();
+                return;
+            }
+
+            const wasOpen = item.classList.contains("active");
+            closeNavItems();
+            if (!wasOpen) item.classList.add("active");
+        });
+    });
+
+    if (adminApp) {
+        adminApp.addEventListener("click", function (e) {
+            if (!e.target.closest(".nav-item")) closeNavItems();
+        });
+    }
+
+    document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") closeNavItems();
+    });
+</script>
