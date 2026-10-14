@@ -189,12 +189,11 @@ function getPrimaryAdministrator() {
 
 /* ACCESO TEMPORAL AL PANEL ADMINISTRATIVO */
 
+const ADMIN_PANEL_ROLES = ["admin", "subadmin", "employee", "messenger"];
+
 function createAdminPanelAccess(token) {
 
-  const authorization = requireRole(
-    token,
-    ["admin", "employee", "messenger"]
-  );
+  const authorization = requireRole(token, ADMIN_PANEL_ROLES);
 
   if (!authorization.success) {
     return authorization;
@@ -276,7 +275,7 @@ function getAdminFiles() {
 
 function getAdminApplication(token) {
 
-    const authorization = requireRole(token, ["admin", "employee", "messenger"]);
+    const authorization = requireRole(token, ADMIN_PANEL_ROLES);
 
     if (!authorization.success) {
         return authorization;

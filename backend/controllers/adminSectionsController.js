@@ -4,42 +4,42 @@ const ADMIN_SECTIONS = {
     resumen: {
         title: "Resumen general",
         file: "frontend/views/admin/sections/resumen",
-        roles: ["admin", "employee", "messenger"]
+        permission: null
     },
     estadisticas: {
         title: "Estadísticas y ventas",
         file: "frontend/views/admin/sections/estadisticas",
-        roles: ["admin", "employee"]
+        permission: "stats.view"
     },
     productos: {
         title: "Productos",
         file: "frontend/views/admin/sections/productos",
-        roles: ["admin", "employee"]
+        permission: "products.view"
     },
     pedidos: {
         title: "Gestión de pedidos",
         file: "frontend/views/admin/sections/pedidos",
-        roles: ["admin", "employee", "messenger"]
+        permission: "orders.view"
     },
     entregas: {
         title: "Seguimiento de entregas",
         file: "frontend/views/admin/sections/entregas",
-        roles: ["admin", "employee", "messenger"]
+        permission: "deliveries.view"
     },
     usuarios: {
         title: "Usuarios y permisos",
         file: "frontend/views/admin/sections/usuarios",
-        roles: ["admin"]
+        permission: "users.view"
     },
     configuracion: {
         title: "Configuración",
         file: "frontend/views/admin/sections/configuracion",
-        roles: ["admin"]
+        permission: "settings.view"
     },
     agenda: {
         title: "Agenda de pedidos",
         file: "frontend/views/admin/sections/agenda",
-        roles: ["admin", "employee", "messenger"]
+        permission: "agenda.view"
     }
 };
 
@@ -57,7 +57,8 @@ function getAdminSection(token, section) {
 
     const sectionConfig = ADMIN_SECTIONS[section];
 
-    const authorization = requireRole(token, sectionConfig.roles);
+    /* const authorization = requireRole(token, sectionConfig.roles); */
+    const authorization = requirePermission(token, sectionConfig.permission);
 
     if (!authorization.success) {
         return authorization;
