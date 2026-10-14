@@ -26,13 +26,8 @@
         }
 
         navigateTo (url) {
-            console.log("ROUTER NAVEGANDO A:", url);
-
             localStorage.setItem("currentRoute", url);
-
             window.location.hash = url;
-
-            console.log("HASH DESPUÉS DE NAVEGAR:", window.location.hash);
         }
 
         pathToRegex (path) {
@@ -61,9 +56,6 @@
         }
 
         async handleRouter () {
-
-            console.log("HANDLE ROUTER EJECUTADO. HASH:", window.location.hash);
-
                const applicationMode = localStorage.getItem("applicationMode");
 
                 if (applicationMode === "admin") {
@@ -107,8 +99,6 @@
                             document.body.classList.remove("main-mode");
                             document.body.classList.add("admin-mode");
                             document.body.classList.remove("application-loading");
-
-                            console.log("PANEL ADMINISTRATIVO RESTAURADO");
 
                         })
                         .withFailureHandler(function (error) {
@@ -196,10 +186,6 @@
             page: "frontend/views/pages/home"
         },
         {
-            path: "/productos",
-            page: "frontend/views/pages/products"
-        },
-        {
             path: "/login",
             page: "frontend/views/pages/login",
             initialize: initializeLogin
@@ -208,6 +194,11 @@
             path: "/registro",
             page: "frontend/views/pages/register",
             initialize: initializeRegister
+        },
+        {
+            path: "/verify-account",
+            page: "frontend/views/pages/verify-email",
+            initialize: initializeVerifyAccount
         },
         {
             path: "/dashboard",

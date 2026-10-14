@@ -16,11 +16,14 @@ function getPage (page) {
         "frontend/views/pages/home",
         "frontend/views/pages/login",
         "frontend/views/pages/register",
-        "frontend/views/pages/dashboard"
+        "frontend/views/pages/verify-email",
+        "frontend/views/pages/dashboard",
+        "frontend/views/pages/404",
+        "frontend/views/pages/products"
     ];
 
     if (!allowedPages.includes(page)) {
-        throw new Error("Página no permitida", page);
+        throw new Error("Página no permitida " + page);
     }
     
     return HtmlService.createHtmlOutputFromFile(page).getContent();
@@ -32,3 +35,7 @@ function getMainApplication() {
         .evaluate()
         .getContent();
 }
+
+ function testSendEmail() {
+     sendVerificationEmail_("mauriciochvrr926@gmail.com", "Prueba", "123456");
+   }

@@ -247,7 +247,6 @@ function getAdminFiles() {
 
     return {
         css: getFileContent(files.css),
-        header: getFileContent(files.header),
         navigation: getFileContent(files.navigation),
         content: getFileContent(files.content),
         app: getFileContent(files.app),
@@ -267,7 +266,6 @@ function getAdminApplication(token) {
     const files = getAdminFiles();
     let html = files.app;
 
-    html = html.replace("{{ADMIN_HEADER}}", files.header);
     html = html.replace("{{ADMIN_NAVIGATION}}", files.navigation);
     html = html.replace("{{ADMIN_CONTENT}}", files.content);
 
@@ -289,9 +287,3 @@ function removeScriptTags(script) {
         .replace(/<\/script>/i, "");
 
 }
-
-// Pruebas
-
-
-
-

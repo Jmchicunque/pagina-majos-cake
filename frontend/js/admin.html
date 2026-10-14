@@ -22,8 +22,6 @@
                         return;
                     }
 
-                    console.log("SESIÓN ADMINISTRATIVA CERRADA");
-
                     const mainApplication = window.mainApplication;
 
                     if (!mainApplication) {
@@ -46,8 +44,6 @@
                     delete window.mainApplication;
 
                     window.location.hash = "/";
-
-                    console.log("APLICACIÓN PRINCIPAL RESTAURADA");
 
                 })
                 .withFailureHandler(function (error) {

@@ -14,7 +14,6 @@
         const $formLogin = document.querySelector("#form-login");
         const $loginBtn = document.querySelector("#form-login button[type='submit']");
         const $spinnerLogin = document.querySelector("#spinner");
-        console.log($spinnerLogin)
 
         if (!$formLogin) return;
 
@@ -71,8 +70,6 @@
             google.script.run
                 .withSuccessHandler(function (panelResponse) {
 
-                    console.log("RESPUESTA DE LA APLICACIÓN ADMIN: ", panelResponse);
-
                     if (!panelResponse.success) {
 
                         console.error("NO SE AUTORIZÓ EL PANEL: ", panelResponse.message);
@@ -106,16 +103,12 @@
 
                     document.body.innerHTML = panelResponse.html;
 
-                    console.log("JS ADMIN RECIBIDO:", panelResponse.js);
-
                     const adminScript = document.createElement("script");
                     adminScript.textContent = panelResponse.js;
                     document.body.appendChild(adminScript);
 
                     document.body.classList.remove("main-mode");
                     document.body.classList.add("admin-mode");
-                    
-                    console.log("APLICACIÓN ADMINISTRATIVA CARGADA");
                 })
                 .withFailureHandler(function (error) {
                     console.error("Error al obtener la aplicación administrativa: ", error);
@@ -150,7 +143,11 @@
                 }
             }
 
-            userLogin[e.target.name] = e.target.value.trim();
+            if (e.target.name === "password") {
+                userLogin.password = e.target.value;
+            } else {
+                userLogin[e.target.name] = e.target.value.trim();
+            }
 
             clearAlertLogin(e.target.parentElement);
 
@@ -233,7 +230,6 @@
                     console.error("No se pudo obtener el usuario autenticado.");
                     return;
                 }
-                console.log("USUARIO AUTENTICADO EN DASHBOARD:", user);
 
             })
             .withFailureHandler(function (error) {
@@ -242,14 +238,133 @@
             .getAuthenticatedUser(token);
     }
 
+    function initializeVerifyAccount() {
+
+        const $form = document.querySelector("#form-verification");
+        const $code = document.querySelector("#verification-code");
+        const $verifyButton = document.querySelector("#verify-code-button");
+        const $resendButton = document.querySelector("#resend-verification-code");
+        const $spinner = document.querySelector("#spinner");
+
+        if (!$form || !$code || !$verifyButton || !$resendButton) {
+            console.error("No se encontró el formulario de verificación.");
+            return;
+        }
+
+        const verificationId = sessionStorage.getItem("pendingVerificationId");
+
+        if (!verificationId) {
+            showNotification("Error", "No hay un registro pendiente de verificación.");
+            router.navigateTo("/registro");
+            return;
+        }
+
+        let isSubmitting = false;
+        $verifyButton.disabled = true;
+
+        $code.addEventListener("input", function () {
+            $code.value = $code.value.replace(/\D/g, "").slice(0, 6);
+            const valid = /^\d{6}$/.test($code.value);
+            $verifyButton.disabled = !valid;
+            $verifyButton.classList.toggle("opacity-btn", !valid);
+
+        });
+
+        $form.addEventListener("submit", function (e) {
+            e.preventDefault();
+            if (isSubmitting || !/^\d{6}$/.test($code.value)) {
+                return;
+            }
+
+            isSubmitting = true;
+            $verifyButton.disabled = true;
+            $resendButton.disabled = true;
+            $spinner.classList.remove("hidden-spinner");
+
+            google.script.run
+                .withSuccessHandler(function (response) {
+
+                    $spinner.classList.add("hidden-spinner");
+                    isSubmitting = false;
+                    $resendButton.disabled = false;
+
+                    if (!response.success) {
+                        showNotification("Error", response.message);
+                        $verifyButton.disabled = !/^\d{6}$/.test($code.value);
+                        return;
+                    }
+
+                    sessionStorage.removeItem("pendingVerificationId");
+
+                    showNotification( "Registro exitoso",response.message);
+                    setTimeout(function () {
+                        router.navigateTo("/login");
+                    }, 1200);
+
+                })
+                .withFailureHandler(function (error) {
+                    console.error("Error al verificar el código:", error);
+                    $spinner.classList.add("hidden-spinner");
+                    isSubmitting = false;
+                    $resendButton.disabled = false;
+                    $verifyButton.disabled = !/^\d{6}$/.test($code.value);
+
+                    showNotification( "Error", "No se pudo verificar el código. Inténtalo nuevamente.");
+
+                })
+                .verifyRegistrationCode(verificationId, $code.value);
+        });
+
+        // Solicitar un nuevo código
+        $resendButton.addEventListener("click", function () {
+
+            if (isSubmitting) return;
+
+            isSubmitting = true;
+            $verifyButton.disabled = true;
+            $resendButton.disabled = true;
+
+            $spinner.classList.remove("hidden-spinner");
+
+            google.script.run
+                .withSuccessHandler(function (response) {
+
+                    $spinner.classList.add("hidden-spinner");
+
+                    isSubmitting = false;
+                    $resendButton.disabled = false;
+                    $verifyButton.disabled = !/^\d{6}$/.test($code.value);
+
+                    if (!response.success) {
+                        showNotification("Error", response.message);
+                        return;
+                    }
+
+                    showNotification("Código enviado", response.message);
+
+                })
+                .withFailureHandler(function (error) {
+
+                    console.error("Error al reenviar el código:", error);
+                    $spinner.classList.add("hidden-spinner");
+
+                    isSubmitting = false;
+                    $resendButton.disabled = false;
+                    $verifyButton.disabled = !/^\d{6}$/.test($code.value);
+
+                    showNotification( "Error","No se pudo reenviar el código.");
+
+                })
+                .resendRegistrationCode(verificationId);
+        });
+
+    }
+
     /* Cerrar sesión */
     function logoutUserLogin () {
         const token = localStorage.getItem("authToken");
 
         function finishLogout() {
-
-            /* sessionStorage.removeItem("authToken");
-            sessionStorage.removeItem("authUser"); */
             localStorage.removeItem("authToken");
             localStorage.removeItem("authUser");
             localStorage.removeItem("currentRoute");
@@ -331,9 +446,16 @@
         $form.addEventListener("submit", insertUser);
 
         // Se envian los datos al google sheets
+        let isSubmitting = false;
+
         function insertUser(e) {
             e.preventDefault();
 
+            if (isSubmitting) return;
+
+            isSubmitting = true;
+            $register.disabled = true;
+            $register.classList.add("opacity-btn");
             $spinner.classList.remove("hidden-spinner");
 
             google.script.run
@@ -342,11 +464,13 @@
                 .createUser(user);
         }
 
-        function confirmDataSubmission (response) {
+/*         function confirmDataSubmission (response) {
+            isSubmitting = false;
             $spinner.classList.add("hidden-spinner");
 
             if (!response.success) {
                 showNotification("Error", response.message);
+                verifyUser();
                 return;
             }
 
@@ -356,13 +480,46 @@
             setTimeout(() => {
                 router.navigateTo("/login");
             }, 1500);
+        } */
+
+        function confirmDataSubmission(response) {
+            isSubmitting = false;
+            $spinner.classList.add("hidden-spinner");
+
+            $register.disabled = false;
+            $register.classList.remove("opacity-btn");
+
+            if (!response || !response.success) {
+                showNotification(
+                    "Error",
+                    response?.message || "No se pudo registrar el usuario."
+                );
+                verifyUser();
+                return;
+            }
+
+            showNotification("Registro exitoso", response.message);
+
+            /* sessionStorage.setItem("pendingVerificationEmail", user.email); */
+            if (response.verificationId) {
+                sessionStorage.setItem("pendingVerificationId", response.verificationId);
+            }
+
+            resetForm();
+
+            setTimeout(() => {
+                router.navigateTo("/verify-account");
+            }, 1500);
         }
 
         function handleRegistrationError (error) {
+            isSubmitting = false;
+
             $spinner.classList.add("hidden-spinner");
+            console.error("Error de registro:", error);
             showNotification("Error", "No se creo el usuario");
 
-            console.error(error);
+            verifyUser();
         }
 
         // validar los campos del formulario
@@ -415,9 +572,9 @@
 
             if (e.target.name !== "password-confirmation") {
                 if (e.target.name === "password") {
-                    user[e.target.name] = e.target.value.trim();
+                    user.password = e.target.value;
                 } else if (e.target.name === "name") {
-                    user[e.target.name] = e.target.value.trim();
+                    user.name = e.target.value.trim();
                 } else {
                     user[e.target.name] = e.target.value.trim().toLowerCase();
                 }
@@ -491,15 +648,9 @@
             .withSuccessHandler(function (user) {
 
                 if (!user) {
-
-                    console.log("LA SESIÓN HA EXPIRADO.");
-
                     handleSessionExpired();
-
                     return;
                 }
-
-                console.log("SESIÓN VÁLIDA:", user);
 
             })
             .withFailureHandler(function (error) {
@@ -509,9 +660,6 @@
     }
 
     function handleSessionExpired() {
-
-        console.log("LA SESIÓN HA EXPIRADO. CERRANDO SESIÓN.");
-
         localStorage.removeItem("authToken");
         localStorage.removeItem("authUser");
         localStorage.removeItem("applicationMode");
@@ -519,45 +667,5 @@
 
         window.location.hash = "/";
     }
-
-
-    //Pruebas
-    function testSessionExpiration() {
-
-        const token = localStorage.getItem("authToken");
-
-        if (!token) {
-            console.log("No existe authToken.");
-            return;
-        }
-
-        console.log("Invalidando sesión en el servidor...");
-
-        google.script.run
-            .withSuccessHandler(function (response) {
-
-                console.log("RESPUESTA:", response);
-
-                if (!response.success) {
-                    return;
-                }
-
-                console.log("Ejecutando checkSession()...");
-
-                checkSession();
-
-            })
-            .withFailureHandler(function (error) {
-
-                console.error("ERROR:", error);
-
-            })
-            .invalidateSessionForTest(token);
-    }
-
-    setInterval(() => {
-        checkSession();
-        console.log("Esta preguntado al servidor");
-    }, 5 * 60 * 1000);
 
 </script>
