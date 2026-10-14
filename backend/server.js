@@ -36,6 +36,5 @@ function getMainApplication() {
         .getContent();
 }
 
- function testSendEmail() {
-     sendVerificationEmail_("mauriciochvrr926@gmail.com", "Prueba", "123456");
-   }
+//Pruebas
+

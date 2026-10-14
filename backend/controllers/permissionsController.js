@@ -66,8 +66,61 @@ function getRolePermissions_(role) {
     return ROLE_PERMISSIONS[normalizedRole].slice();
 }
 
+function getUserExtraPermissions_(userId) {
+    const sheet = obtainSheet(config_().SH_USER_PERMISSIONS);
+
+    if (!sheet || sheet.getLastRow() < 2) {
+        return [];
+    }
+
+    const rows = sheet
+        .getRange(2, 1, sheet.getLastRow() - 1, 9)
+        .getValues();
+
+    const now = new Date();
+    const result = [];
+
+    rows.forEach(function (row) {
+        const rowUserId = String(row[1]).trim();
+        const permission = String(row[2]).trim();
+        const expiresAt = row[5];
+        const status = String(row[6]).trim().toLowerCase();
+
+        if (rowUserId !== String(userId).trim()) return;
+        if (status !== "active") return;
+
+        if (expiresAt !== "") {
+            if (!(expiresAt instanceof Date)) return;
+            if (expiresAt.getTime() <= now.getTime()) return;
+        }
+
+        if (!Object.prototype.hasOwnProperty.call(PERMISSIONS, permission)) return;
+        if (!PERMISSIONS[permission].delegable) return;
+
+        if (result.indexOf(permission) === -1) {
+            result.push(permission);
+        }
+    });
+
+    return result;
+}
+
 function getEffectivePermissions_(user) {
-    return getRolePermissions_(user.role);
+    const rolePermissions = getRolePermissions_(user.role);
+
+    if (String(user.role).trim().toLowerCase() === "admin") {
+        return rolePermissions;
+    }
+
+    const extraPermissions = getUserExtraPermissions_(user.id);
+
+    extraPermissions.forEach(function (permission) {
+        if (rolePermissions.indexOf(permission) === -1) {
+            rolePermissions.push(permission);
+        }
+    });
+
+    return rolePermissions;
 }
 
 function userHasPermission_(user, permission) {
