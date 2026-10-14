@@ -64,7 +64,7 @@
         });
     }
 
-    function loadChartJs() {
+    /* function loadChartJs() {
         return new Promise(function (resolve, reject) {
             if (window.Chart) {
                 resolve();
@@ -76,6 +76,50 @@
             script.onerror = reject;
             document.head.appendChild(script);
         });
+    } */
+
+    let chartJsPromise = null;
+
+    function loadChartJs() {
+        if (window.Chart) {
+            return Promise.resolve();
+        }
+
+        if (!chartJsPromise) {
+            chartJsPromise = new Promise(function (resolve, reject) {
+                const script = document.createElement("script");
+                script.src = "https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js";
+                script.onload = resolve;
+                script.onerror = function (error) {
+                    chartJsPromise = null;
+                    reject(error);
+                };
+                document.head.appendChild(script);
+            });
+        }
+
+        return chartJsPromise;
+    }
+
+    function destroyAdminCharts() {
+        if (!window.Chart) return;
+
+        ["lineChart", "barChart"].forEach(function (id) {
+            const chart = Chart.getChart(id);
+            if (chart) chart.destroy();
+        });
+    }
+
+    function renderAdminCharts() {
+        loadChartJs()
+            .then(function () {
+                initAdminCharts();
+                applyChartTheme();
+                scheduleChartResize();
+            })
+            .catch(function (error) {
+                console.error("No se pudo cargar Chart.js:", error);
+            });
     }
 
     function initAdminCharts() {
@@ -83,6 +127,7 @@
         const barChart = document.getElementById("barChart");
 
         if (!lineChart || !barChart) return;
+        destroyAdminCharts();
 
         const styles = getComputedStyle(document.body);
         const cssVar = (name) => styles.getPropertyValue(name).trim();
@@ -159,12 +204,13 @@
         });
     }
 
-    loadChartJs()
+    /* loadChartJs()
         .then(function () {
             initAdminCharts();
             scheduleChartResize();
         })
         .catch(function (error) {
             console.error("No se pudo cargar Chart.js:", error);
-        });
+        }); */
+    renderAdminCharts();
 </script>

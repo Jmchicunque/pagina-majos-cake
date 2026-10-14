@@ -238,7 +238,8 @@ const ADMIN_JS_MODULES = [
     "frontend/js/admin/adminSession",
     "frontend/js/admin/adminCharts",
     "frontend/js/admin/adminLayout",
-    "frontend/js/admin/adminCalendar"
+    "frontend/js/admin/adminCalendar",
+    "frontend/js/admin/adminRouter"
 ];
 
 function buildAdminJavaScript() {
@@ -255,22 +256,22 @@ function getAdminFiles() {
 
     const files = {
         css: "frontend/css/adminStyles",
-        header: "frontend/views/admin/components/adminHeader",
         navigation: "frontend/views/admin/components/adminNavigation",
         content: "frontend/views/admin/components/adminContent",
-        app: "frontend/views/admin/adminApp",
-        /* js: "frontend/js/admin" */
+        aside: "frontend/views/admin/components/adminAside",
+        view: "frontend/views/admin/sections/resumen",
+        app: "frontend/views/admin/adminApp"
     };
 
     return {
         css: getFileContent(files.css),
         navigation: getFileContent(files.navigation),
         content: getFileContent(files.content),
+        aside: getFileContent(files.aside),
+        view: getFileContent(files.view),
         app: getFileContent(files.app),
-        /* js: getFileContent(files.js) */
         js: buildAdminJavaScript()
     };
-
 }
 
 function getAdminApplication(token) {
@@ -282,21 +283,21 @@ function getAdminApplication(token) {
     }
 
     const files = getAdminFiles();
-    let html = files.app;
 
-    html = html.replace("{{ADMIN_NAVIGATION}}", files.navigation);
-    html = html.replace("{{ADMIN_CONTENT}}", files.content);
+    const content = files.content
+        .replace("{{ADMIN_VIEW}}", function () { return files.view; })
+        .replace("{{ADMIN_ASIDE}}", function () { return files.aside; });
 
-    /* const adminJavaScript = removeScriptTags(files.js); */
-    const adminJavaScript = files.js;
+    const html = files.app
+        .replace("{{ADMIN_NAVIGATION}}", function () { return files.navigation; })
+        .replace("{{ADMIN_CONTENT}}", function () { return content; });
 
     return {
         success: true,
         html: files.css + html,
-        js: adminJavaScript,
+        js: files.js,
         user: authorization.user
     };
-
 }
 
 function removeScriptTags(script) {

@@ -1,0 +1,110 @@
+<script>
+    const adminView = document.querySelector("#admin-view");
+    const adminRoot = document.querySelector("#admin-app");
+
+    let currentSection = "resumen";
+    let lastRequestId = 0;
+
+    const sectionLifecycle = {
+        resumen: {
+            onEnter: function () { renderAdminCharts(); },
+            onLeave: function () { destroyAdminCharts(); }
+        }
+    };
+
+    function runSectionHook(section, hook) {
+        const lifecycle = sectionLifecycle[section];
+
+        if (lifecycle && typeof lifecycle[hook] === "function") {
+            lifecycle[hook]();
+        }
+    }
+
+    function leaveCurrentSection() {
+        if (currentSection) {
+            runSectionHook(currentSection, "onLeave");
+        }
+
+        currentSection = null;
+    }
+
+    function setActiveSectionLink(section) {
+        document.querySelectorAll("#sidebar [data-section]").forEach(function (link) {
+            link.classList.toggle("active", link.dataset.section === section);
+        });
+    }
+
+    function showSectionMessage(message) {
+        leaveCurrentSection();
+        adminView.innerHTML = '<div class="card"><p>' + message + '</p></div>';
+    }
+
+    function loadAdminSection(section, options) {
+
+        if (!adminView) return;
+        if (section === currentSection) return;
+
+        const token = localStorage.getItem("authToken");
+
+        if (!token) {
+            showSectionMessage("Tu sesión ya no está disponible. Inicia sesión de nuevo.");
+            return;
+        }
+
+        const requestId = ++lastRequestId;
+
+        setActiveSectionLink(section);
+        showSectionMessage("Cargando...");
+
+        google.script.run
+            .withSuccessHandler(function (response) {
+
+                if (requestId !== lastRequestId) return;
+
+                if (!response.success) {
+
+                    if (options && options.fallback) {
+                        localStorage.removeItem("adminCurrentSection");
+                        loadAdminSection(options.fallback);
+                        return;
+                    }
+
+                    showSectionMessage(response.message);
+                    return;
+                }
+
+                adminView.innerHTML = response.html;
+                currentSection = section;
+                localStorage.setItem("adminCurrentSection", section);
+                runSectionHook(section, "onEnter");
+            })
+            .withFailureHandler(function (error) {
+
+                if (requestId !== lastRequestId) return;
+
+                console.error("ERROR AL CARGAR LA SECCIÓN:", error);
+                showSectionMessage("No se pudo cargar la sección. Inténtalo de nuevo.");
+            })
+            .getAdminSection(token, section);
+    }
+
+    function restoreAdminSection() {
+        const savedSection = localStorage.getItem("adminCurrentSection");
+
+        if (!savedSection || savedSection === "resumen") return;
+
+        loadAdminSection(savedSection, { fallback: "resumen" });
+    }
+
+    if (adminRoot) {
+        adminRoot.addEventListener("click", function (e) {
+            const link = e.target.closest("[data-section]");
+            if (!link) return;
+
+            e.preventDefault();
+            loadAdminSection(link.dataset.section);
+        });
+    }
+
+    restoreAdminSection();
+</script>

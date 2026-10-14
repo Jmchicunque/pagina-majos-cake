@@ -27,6 +27,7 @@
                     return;
                 }
 
+                destroyAdminCharts();
                 document.body.innerHTML = "";
 
                 document.body.appendChild(mainApplication);
@@ -38,6 +39,7 @@
                 localStorage.removeItem("authUser");
                 localStorage.removeItem("applicationMode");
                 localStorage.removeItem("currentRoute");
+                localStorage.removeItem("adminCurrentSection");
 
                 delete window.mainApplication;
 
